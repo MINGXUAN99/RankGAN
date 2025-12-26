@@ -7,7 +7,9 @@ import torch.nn as nn
 import torch.optim as optim
 import copy
 import matplotlib.pyplot as plt
-from skimage.measure import compare_ssim, compare_psnr
+# from skimage.measure import compare_ssim, compare_psnr
+from skimage.metrics import structural_similarity as compare_ssim
+from skimage.metrics import peak_signal_noise_ratio as compare_psnr
 import time
 import os
 import numpy as np
