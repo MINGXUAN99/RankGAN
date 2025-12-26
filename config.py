@@ -112,7 +112,7 @@ def parse_args():
     parser.add_argument('--pose-lambda', type=float, default=1, help='weight of pose loss')
 
     # ======================== GoGAN Setings ==================================
-    parser.add_argument('--stage-epochs', type=utils.str2list, default=None, help='number of epochs per gogan stage')
+    parser.add_argument('--stage-epochs', type=utils.str2list, default="[100, 100, 100]", help='number of epochs per gogan stage')
     parser.add_argument('--num-stages', type=int, default=3, help='number of gogan stages')
     parser.add_argument('--margin', type=float, default=2.0, help='initial margin of gogan loss')
     parser.add_argument('--weight-gan-final', type=float, default=1.0, help='weight of discriminator loss')
