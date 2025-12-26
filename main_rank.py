@@ -65,6 +65,9 @@ def main():
     # start training !!!
     num_stages = args.num_stages
     stage_epochs = args.stage_epochs
+    if stage_epochs is None:
+        stage_epochs = [args.nepochs] * num_stages
+    
     for stage in range(args.start_stage, num_stages):
 
         # check whether ready to start new stage and if not, optimize discriminator
