@@ -7,7 +7,8 @@ import math
 import numpy as np
 import argparse
 from PIL import Image, ImageDraw
-from skimage.measure import compare_ssim as ssim
+# from skimage.measure import compare_ssim as ssim
+from skimage.metrics import structural_similarity as ssim
 from inspect import getframeinfo, stack
 import json
 import sys
