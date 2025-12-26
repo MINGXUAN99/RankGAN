@@ -116,7 +116,7 @@ def parse_args():
     parser.add_argument('--num-stages', type=int, default=3, help='number of gogan stages')
     parser.add_argument('--margin', type=float, default=2.0, help='initial margin of gogan loss')
     parser.add_argument('--weight-gan-final', type=float, default=1.0, help='weight of discriminator loss')
-    parser.add_argument('--weight-vae', type=float, default=1.0, help='weight of mse loss')
+    parser.add_argument('--weight-vae-init', type=float, default=1.0, help='weight of mse loss')
     parser.add_argument('--ngf', type=int, default=32)
     parser.add_argument('--ndf', type=int, default=32)
     parser.add_argument('--nz', type=int, default=100, help='size of the latent z vector')
