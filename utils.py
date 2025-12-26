@@ -28,7 +28,10 @@ def cleanup():
     children = current_process.children(recursive=True)
     for child in children:
         try:
-            os.kill(int(child.pid), signal.SIGKILL)
+            if hasattr(signal, 'SIGKILL'):
+                os.kill(int(child.pid), signal.SIGKILL)
+            else:
+                os.kill(int(child.pid), signal.SIGTERM)
         except OSError as ex:
              raise Exception("wasn't able to kill the child process (pid:{}).".format(child.pid))
     #     # os.waitpid(child.pid, os.P_ALL)

@@ -85,7 +85,7 @@ def parse_args():
     parser.add_argument('--nepochs', type=int, default=200, metavar='', help='number of epochs to train')
     parser.add_argument('--niters', type=int, default=None, metavar='', help='number of iterations at test time')
     parser.add_argument('--epoch-number', type=int, default=None, metavar='', help='epoch number')
-    parser.add_argument('--nthreads', type=int, default=10, metavar='', help='number of threads for data loading')
+    parser.add_argument('--nthreads', type=int, default=0, metavar='', help='number of threads for data loading')
     parser.add_argument('--manual-seed', type=int, default=101, metavar='', help='manual seed for randomness')
     parser.add_argument('--port', type=int, default=8097, metavar='', help='port for visualizing training at http://localhost:port')
     parser.add_argument('--env', type=str, default='main', help='visdom environment name')
