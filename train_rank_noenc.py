@@ -57,7 +57,7 @@ class Trainer():
         self.weight_kld = args.weight_kld
         self.margin = args.margin
         self.num_stages = args.num_stages
-        self.nranks = args.nranks
+        self.nranks = max(args.nranks, 2) # Ensure at least 1 output dimension (nranks-1 >= 1)
 
         self.lr_vae = args.learning_rate_vae
         self.lr_dis = args.learning_rate_dis
@@ -210,7 +210,19 @@ class Trainer():
         self.modelG[1] = copy.deepcopy(self.modelG[0])
 
         self.target_fakeD = self.target_fakeG.clone()
-        self.target_fakeG[:, stage] = 1
+        if self.target_fakeG.size(1) > stage:
+             self.target_fakeG[:, stage] = 1
+        else:
+             # Fallback for scalar output models or when nranks is small
+             self.target_fakeG.fill_(1)
+             # If we are reusing the same scalar output, we need to ensure target_fakeD is 0 for the new stage?
+             # But setup_stage copies fakeG (1) to fakeD. This implies D expects 1 for fakes?
+             # This would be problematic if D expects 1 for Real too.
+             # For standard GAN stage, we usually want fakeD=0, fakeG=1.
+             if self.target_fakeG.size(1) == 1:
+                 self.target_fakeD.fill_(0)
+                 self.target_fakeG.fill_(1)
+
         print("Target Fake (D):", self.target_fakeD[0])
         print("Target Fake (G):", self.target_fakeG[0])
 
