@@ -85,7 +85,7 @@ def parse_args():
     parser.add_argument('--nepochs', type=int, default=200, metavar='', help='number of epochs to train')
     parser.add_argument('--niters', type=int, default=None, metavar='', help='number of iterations at test time')
     parser.add_argument('--epoch-number', type=int, default=None, metavar='', help='epoch number')
-    parser.add_argument('--nthreads', type=int, default=10, metavar='', help='number of threads for data loading')
+    parser.add_argument('--nthreads', type=int, default=0, metavar='', help='number of threads for data loading')
     parser.add_argument('--manual-seed', type=int, default=101, metavar='', help='manual seed for randomness')
     parser.add_argument('--port', type=int, default=8097, metavar='', help='port for visualizing training at http://localhost:port')
     parser.add_argument('--env', type=str, default='main', help='visdom environment name')
@@ -112,11 +112,11 @@ def parse_args():
     parser.add_argument('--pose-lambda', type=float, default=1, help='weight of pose loss')
 
     # ======================== GoGAN Setings ==================================
-    parser.add_argument('--stage-epochs', type=utils.str2list, default=None, help='number of epochs per gogan stage')
+    parser.add_argument('--stage-epochs', type=utils.str2list, default="[100, 100, 100]", help='number of epochs per gogan stage')
     parser.add_argument('--num-stages', type=int, default=3, help='number of gogan stages')
     parser.add_argument('--margin', type=float, default=2.0, help='initial margin of gogan loss')
     parser.add_argument('--weight-gan-final', type=float, default=1.0, help='weight of discriminator loss')
-    parser.add_argument('--weight-vae', type=float, default=1.0, help='weight of mse loss')
+    parser.add_argument('--weight-vae-init', type=float, default=1.0, help='weight of mse loss')
     parser.add_argument('--ngf', type=int, default=32)
     parser.add_argument('--ndf', type=int, default=32)
     parser.add_argument('--nz', type=int, default=100, help='size of the latent z vector')

@@ -7,7 +7,8 @@ import math
 import numpy as np
 import argparse
 from PIL import Image, ImageDraw
-from skimage.measure import compare_ssim as ssim
+# from skimage.measure import compare_ssim as ssim
+from skimage.metrics import structural_similarity as ssim
 from inspect import getframeinfo, stack
 import json
 import sys
@@ -27,7 +28,10 @@ def cleanup():
     children = current_process.children(recursive=True)
     for child in children:
         try:
-            os.kill(int(child.pid), signal.SIGKILL)
+            if hasattr(signal, 'SIGKILL'):
+                os.kill(int(child.pid), signal.SIGKILL)
+            else:
+                os.kill(int(child.pid), signal.SIGTERM)
         except OSError as ex:
              raise Exception("wasn't able to kill the child process (pid:{}).".format(child.pid))
     #     # os.waitpid(child.pid, os.P_ALL)

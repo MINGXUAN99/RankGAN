@@ -18,7 +18,8 @@ class Visualizer:
         self.keys = []
         self.values = {}
         self.env = env
-        self.viz = visdom.Visdom(port=port, env=env)
+        # self.viz = visdom.Visdom(port=port, env=env)
+        self.viz = None
         self.iteration = 0
         self.title = title
 
@@ -39,21 +40,22 @@ class Visualizer:
             if modules[key]['vtype'] == 'plot':
                 self.values[key]['value'] = []
                 # Create traces
-                data = [go.Scatter(
-                    x=[],
-                    y=[],
-                    mode='lines',
-                    name=self.values[key]['layout']['windows'][i]
-                ) for i in range(len(self.values[key]['layout']['windows']))]
-                # Edit the layout
-                layout = dict(
-                    title=key,
-                    xaxis=dict(title='Epoch'),
-                    yaxis=dict(title=key),
-                    )
-                fig = dict(data=data, layout=layout)
-                self.values[key]['win'] = self.viz._send(
-                    plotlify(fig, env=self.env, win=self.values[key]['win']))
+                # data = [go.Scatter(
+                #     x=[],
+                #     y=[],
+                #     mode='lines',
+                #     name=self.values[key]['layout']['windows'][i]
+                # ) for i in range(len(self.values[key]['layout']['windows']))]
+                # # Edit the layout
+                # layout = dict(
+                #     title=key,
+                #     xaxis=dict(title='Epoch'),
+                #     yaxis=dict(title=key),
+                #     )
+                # fig = dict(data=data, layout=layout)
+                # self.values[key]['win'] = self.viz._send(
+                #     plotlify(fig, env=self.env, win=self.values[key]['win']))
+                pass
             elif modules[key]['vtype'] in ('image', 'images'):
                 self.values[key]['value'] = None
             else:
@@ -61,6 +63,7 @@ class Visualizer:
                                 'visualizer plugin and rerun !!')
 
     def update(self, modules):
+        return # Disable Visdom updates
         for key in modules:
             if self.values[key]['dtype'] == 'scalar':
                 self.values[key]['value'].append(modules[key])
