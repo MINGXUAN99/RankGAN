@@ -87,8 +87,8 @@ def main():
             # if stage == 2:
 
             loss_train = trainer.train(stage, epoch, loader_train)
-            # if stage > 0:
-            #     disc_acc = trainer.test(stage, epoch, loader_test)
+            if stage >= 0:
+                disc_acc = trainer.test(stage, epoch, loader_test)
             # print("Time taken = {}".format(time.time() - cur_time))
 
             try:

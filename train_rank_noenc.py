@@ -12,6 +12,7 @@ import time
 import os
 import numpy as np
 import plugins
+from fid import FIDScore
 from losses import RankOrderLoss
 from evaluate import Logits_Classification
 
@@ -99,6 +100,16 @@ class Trainer():
         self.params_monitor_train = ['Loss_D0', 'Loss_G0', 'Acc_Real', 'Acc_Fake']
         self.monitor_train.register(self.params_monitor_train)
 
+        # logging test
+        self.log_loss_test = plugins.Logger(args.logs, 'TestLogger.txt')
+        self.params_loss_test = ['Test_Score_D0', 'Test_Score_D0_G0', 'Test_Score_D0_G1', 'SSIM', 'PSNR', 'Test_Disc_Acc', 'FID']
+        self.log_loss_test.register(self.params_loss_test)
+
+        # monitor test
+        self.monitor_test = plugins.Monitor()
+        self.params_monitor_test = ['Test_Score_D0', 'Test_Score_D0_G0', 'Test_Score_D0_G1', 'SSIM', 'PSNR', 'Test_Disc_Acc', 'FID']
+        self.monitor_test.register(self.params_monitor_test)
+
         # Define visualizer plot type for given dataset
         if args.net_type == 'gmm':
             self.plot_update_interval = 300
@@ -129,6 +140,21 @@ class Trainer():
         }
         self.visualizer_train.register(self.params_visualizer_train)
 
+        # visualize test
+        self.visualizer_test = plugins.Visualizer(port=self.port, env=self.env, title='Test')
+        self.params_visualizer_test = {
+            'Test_Score_D0':{'dtype':'scalar', 'vtype':'plot', 'win': 'test_score_gan', 'layout': {'windows': ['Test_Score_D0', 'Test_Score_D0_G0', 'Test_Score_D0_G1'], 'id': 0}},
+            'Test_Score_D0_G0':{'dtype':'scalar','vtype':'plot', 'win': 'test_score_gan', 'layout': {'windows': ['Test_Score_D0', 'Test_Score_D0_G0', 'Test_Score_D0_G1'], 'id': 1}},
+            'Test_Score_D0_G1':{'dtype':'scalar','vtype':'plot', 'win': 'test_score_gan', 'layout': {'windows': ['Test_Score_D0', 'Test_Score_D0_G0', 'Test_Score_D0_G1'], 'id': 2}},
+            'SSIM':{'dtype':'scalar','vtype':'plot', 'win': 'test_metrics', 'layout': {'windows': ['SSIM', 'PSNR', 'FID'], 'id': 0}},
+            'PSNR':{'dtype':'scalar','vtype':'plot', 'win': 'test_metrics', 'layout': {'windows': ['SSIM', 'PSNR', 'FID'], 'id': 1}},
+            'FID':{'dtype':'scalar','vtype':'plot', 'win': 'test_metrics', 'layout': {'windows': ['SSIM', 'PSNR', 'FID'], 'id': 2}},
+            'Test_Disc_Acc':{'dtype':'scalar','vtype':'plot', 'win': 'test_acc'},
+            'Test_Real': {'dtype': output_dtype, 'vtype': output_vtype, 'win': 'test_real'},
+            'Test_Fakes_Encoder': {'dtype': output_dtype, 'vtype': output_vtype, 'win': 'test_fake'},
+        }
+        self.visualizer_test.register(self.params_visualizer_test)
+
         # display training progress
         self.print_train = '[%d/%d][%d/%d] '
         for item in self.params_loss_train:
@@ -147,6 +173,17 @@ class Trainer():
         self.t_zero = torch.zeros(1)
         self.add_noise = args.add_noise
         self.noise_var = args.noise_var
+
+        self.fid_score = FIDScore(self.device)
+        self.input = torch.FloatTensor(self.batch_size, self.nchannels, self.resolution_high, self.resolution_wide).to(self.device)
+        self.test_input = torch.FloatTensor(self.batch_size, self.nchannels, self.resolution_high, self.resolution_wide).to(self.device)
+        self.extra_layer = 0
+        self.extra_layer_gamma = 0
+        self.acc_margin = 0.5 # Assuming default margin since it was used in optimize_discriminator but not defined
+        self.marker_high = 1 # Assuming default
+        self.marker_low = 1 # Assuming default
+        self.disc_diff_weight = args.disc_diff_weight
+        self.disc_diff_weight_init = args.disc_diff_weight
 
     def initialize_optimizer(self, model, lr, optim_method='RMSprop', weight_decay=None):
         if weight_decay is None:
@@ -392,6 +429,9 @@ class Trainer():
         epoch_disc_acc = 0.0
         num_batches = len(dataloader)
 
+        real_activations = []
+        fake_activations = []
+
         i = 0
         while i < len(dataloader):
             ############################
@@ -430,6 +470,12 @@ class Trainer():
                 for j in range(batch_size):
                     ssim_score += compare_ssim(compare_real[j,...].cpu().numpy(), compare_fake[j,...].data.cpu().numpy(), data_range=data_range, multichannel=True)
                     psnr_score += compare_psnr(compare_real[j,...].cpu().numpy(), compare_fake[j,...].data.cpu().numpy(), data_range=data_range)
+                
+                # FID accumulation
+                act_real = self.fid_score.get_activations(input)
+                act_fake = self.fid_score.get_activations(fake_G0)
+                real_activations.append(act_real)
+                fake_activations.append(act_fake)
 
             epoch_score_D0 = torch.cat((epoch_score_D0, score_D0.data))
             epoch_score_D0_G0 = torch.cat((epoch_score_D0_G0, score_D0_G0.data))
@@ -446,10 +492,11 @@ class Trainer():
             test_scores['Test_Score_D0_G1'] = score_D0_G1.median().item()
             test_scores['SSIM'] = ssim_score/batch_size
             test_scores['PSNR'] = psnr_score/batch_size
+            test_scores['FID'] = 0.0
             test_scores['Test_Disc_Acc'] = disc_acc
             self.monitor_test.update(test_scores, batch_size)
-            print('Test: [%d/%d][%d/%d] Score_D0: %.3f Score_D0_G0: %.3f Score_D0_G1: %.3f SSIM: %.3f PSNR: %.3f Disc_Acc: %.3f'
-                    % (epoch, self.stage_epochs[stage], i, len(dataloader), score_D0.median().item(), score_D0_G0.median().item(), score_D0_G1.median().item(), ssim_score/batch_size, psnr_score/batch_size, disc_acc))
+            print('Test: [%d/%d][%d/%d] Score_D0: %.3f Score_D0_G0: %.3f Score_D0_G1: %.3f SSIM: %.3f PSNR: %.3f Disc_Acc: %.3f FID: %.3f'
+                    % (epoch, self.stage_epochs[stage], i, len(dataloader), score_D0.median().item(), score_D0_G0.median().item(), score_D0_G1.median().item(), ssim_score/batch_size, psnr_score/batch_size, disc_acc, 0.0))
 
             # if (i % int(len(dataloader)*0.25)) == 0:
             #     test_scores['Test_Real'] = self.test_input.data.cpu()
@@ -479,12 +526,23 @@ class Trainer():
         avg_mean_scores_D0_G0 = epoch_score_D0_G0.median()
         avg_mean_scores_D0_G1 = epoch_score_D0_G1.median()
 
+        if self.args.net_type != 'gmm' and len(real_activations) > 0:
+             real_activations = np.concatenate(real_activations, axis=0)
+             fake_activations = np.concatenate(fake_activations, axis=0)
+             mu1, sigma1 = np.mean(real_activations, axis=0), np.cov(real_activations, rowvar=False)
+             mu2, sigma2 = np.mean(fake_activations, axis=0), np.cov(fake_activations, rowvar=False)
+             fid_value = self.fid_score.calculate_frechet_distance(mu1, sigma1, mu2, sigma2)
+             print('FID: %.3f' % fid_value)
+        else:
+             fid_value = 0.0
+
         test_scores = {}
         test_scores['Test_Score_D0'] = avg_mean_scores_D0
         test_scores['Test_Score_D0_G0'] = avg_mean_scores_D0_G0
         test_scores['Test_Score_D0_G1'] = avg_mean_scores_D0_G1
         test_scores['SSIM'] = epoch_ssim_score/(num_batches)
         test_scores['PSNR'] = epoch_psnr_score/(num_batches)
+        test_scores['FID'] = fid_value
         test_scores['Test_Disc_Acc'] = epoch_disc_acc / (num_batches)
         test_scores['Test_Real'] = self.test_input.data.cpu()
         test_scores['Test_Fakes_Encoder'] = fake_G0.data.cpu()
