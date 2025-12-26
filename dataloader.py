@@ -15,6 +15,9 @@ class Dataloader:
     def __init__(self, args):
         self.args = args
 
+        if self.args.dataroot is None:
+            self.args.dataroot = './data'
+
         self.loader_input = args.loader_input
         self.loader_label = args.loader_label
         self.prefetch = args.prefetch
